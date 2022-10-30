@@ -1,20 +1,34 @@
-# asaffisher.github.io
 When You Find A Logical Bug In GDB (and other linux debuggers)
 Investigating a bug in tools used for work could be annoying, you don't have time for this and most times you don't want to have huge side-quests. I am going to talk about a bug my college happened to trigger in GDB. I hope some of you might learn from the methods I use to investigate a certain problem without getting into a large code base and get familiar too much with the product.
+
 To be honest, this logical bug is in someway a new anti-debugging method that most linux distro's will "support". This bug is special in my opinion because it can show how logical bugs can be reduced between different codebases.
+
 My co-worker, wanted to load a .so file from memory mapped file. Typically what you'd want to do, is to load a .so file to the program's memory and write it to the memory-mapped file:
+
+```rust
 use memfd; 
 use std::io::Write; 
 // Create a memory mapped file. [1]
 let mfd = memfd::MemfdOptions::default()
                      .allow_sealing(true)
                      .create("mapped-so").unwrap(); 
-// Read the .so from the file system. let buff = std::fs::read("/usr/lib64/ld-linux-x86–64.so.2").unwrap();
-// Write it to the memory mapped file. mfd.as_file().write(buff.as_slice()).unwrap();
+// Read the .so from the file system. 
+let buff = std::fs::read("/usr/lib64/ld-linux-x86–64.so.2").unwrap();
+// Write it to the memory mapped file. 
+mfd.as_file().write(buff.as_slice()).unwrap();
+```
 Wait, what am I doing here? What is mfd/memory mapped file? Why can you writeto it?
+
+![man page of memfd_create](/assets/images/man_memfd_create.png)
+
 Basically on [1], you are holding an fd to simulated file living in the machine's RAM, (see linux kernel implementation /mm/shmem.c or /fs/hugetlbfs/inode.c). Then on line 8 we write.so's data to that memory-mapped file.
+
 Now in order to use dlopen, we need to have a valid path to that .so to do so we will use /proc.
-/proc is a special path in most linux distros, it has a filesystem called procfs mounted to it by the kernel on startup. procfs gives you a lot of information about the machine, processes, memory management, etc. For example, you could see all opened files of a process by running ls -all /proc/[PID]/fd. A process can access its own pid's information in short using the /proc/self/ prefix.
+
+> /proc is a special path in most linux distros, it has a filesystem called procfs mounted to it by the kernel on startup. procfs gives you a lot of
+> information about the machine, processes, memory management, etc. For example, you could see all opened files of a process by running 
+> ls -all /proc/[PID]/fd. A process can access its own pid's information in short using the /proc/self/ prefix.
+
 Cool, so now when we have our .so memory mapped into an fd, we could dlopen it using /proc/self/fd/[fd of memory mapped .so].
 use memfd;
 use dlopen_derive::{self, WrapperApi};
