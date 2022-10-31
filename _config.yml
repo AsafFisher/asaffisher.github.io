@@ -1,0 +1,7 @@
+remote_theme: pages-themes/hacker@v0.2.0
+plugins:
+- jekyll-remote-theme
+
+title: [Asaf's Latest Blog Post]
+description: [A new bug that can be used for anti-debugging purpose]
+google_analytics: G-E8D2SXXJ5S
